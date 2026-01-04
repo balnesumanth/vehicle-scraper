@@ -1,6 +1,8 @@
 import { fetchHtmlWithPuppeteer, fetchHtmlWithAxios } from './http/fetchHtml';
 import { VehicleSearchItem } from './types/search.types';
 import { VehicleDetail } from './types/detail.types';
+import { mkdir, writeFile } from 'fs/promises';
+import path from 'path';
 
 interface SiteParsers {
   parseSearchPage: (html: string) => VehicleSearchItem[];
@@ -16,18 +18,41 @@ async function getParsers(site: string): Promise<SiteParsers> {
   };
 }
 
+async function saveOutput(site: string, mode: string, data: any, url?: string): Promise<void> {
+  const outputDir = path.join(process.cwd(), 'output', site, mode);
+  await mkdir(outputDir, { recursive: true });
+
+  let filename: string;
+  if (mode === 'search') {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    filename = `search-results-${timestamp}.json`;
+  } else if (mode === 'detail' && url) {
+    // Create a slug from the last part of the URL path
+    const urlSlug = new URL(url).pathname.split('/').filter(Boolean).pop() || '';
+    filename = `${urlSlug.replace(/[^a-zA-Z0-9-]/g, '-') || 'vehicle'}.json`;
+  } else {
+    // Fallback to timestamp if no URL is provided for detail
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    filename = `${timestamp}.json`;
+  }
+
+  const filepath = path.join(outputDir, filename);
+
+  await writeFile(filepath, JSON.stringify(data, null, 2));
+  console.log(`\n✔ Output saved to: ${filepath}\n`);
+}
+
 async function runSearch(site: string, searchUrl: string): Promise<void> {
   console.log(`\n✔ Running search on: ${searchUrl}\n`);
   const { parseSearchPage } = await getParsers(site);
 
-  const puppeteerSites = ['motorsvibes', 'awballarat'];
+  const puppeteerSites = ['awballarat'];
   const fetcher = puppeteerSites.includes(site) ? fetchHtmlWithPuppeteer : fetchHtmlWithAxios;
 
   const searchHtml = await fetcher(searchUrl);
-  const vehicles = parseSearchPage(searchHtml);
+  const allVehicles = parseSearchPage(searchHtml);
   
-  console.log(`Found ${vehicles.length} vehicles`);
-  console.log(vehicles.slice(0, 3));
+  await saveOutput(site, 'search', allVehicles, searchUrl);
 }
 
 async function runDetail(site: string, detailUrl: string): Promise<void> {
@@ -35,7 +60,7 @@ async function runDetail(site: string, detailUrl: string): Promise<void> {
   const { parseDetailPage } = await getParsers(site);
 
   // CRITICAL FIX: Add 'awballarat' here so it uses Puppeteer for the detail page
-  const puppeteerSites = ['motorsvibes', 'awballarat'];
+  const puppeteerSites = ['awballarat'];
   const fetcher = puppeteerSites.includes(site) ? fetchHtmlWithPuppeteer : fetchHtmlWithAxios;
 
   let detailHtml: string;
@@ -47,9 +72,7 @@ async function runDetail(site: string, detailUrl: string): Promise<void> {
   }
 
   const detail = parseDetailPage(detailHtml);
-  console.log('\n--- Vehicle Detail ---');
-  console.log(detail);
-  console.log('----------------------\n');
+  await saveOutput(site, 'detail', detail, detailUrl);
 }
 
 async function main() {

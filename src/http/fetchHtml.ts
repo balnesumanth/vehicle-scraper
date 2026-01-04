@@ -25,7 +25,7 @@ export async function fetchHtmlWithPuppeteer(url: string): Promise<string> {
       await page.waitForSelector('.elementor-widget-theme-post-content', { timeout: 15000 }).catch(() => null);
       
       // Give the site a moment to finish its animations and loading
-      await new Promise(r => setTimeout(r, 3000)); 
+      await new Promise(r => setTimeout(r, 3000));
     }
 
     return await page.content();

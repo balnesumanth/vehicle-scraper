@@ -1,35 +1,38 @@
 # Vehicle Scraper
 
-This project is a modular web scraper built with Node.js and TypeScript, designed to extract vehicle data from multiple car dealership websites. It features a flexible architecture that allows for site-specific parsing logic and dynamically chooses the appropriate fetching strategy based on the target site's complexity.
+This project is a modular web scraper built with Node.js and TypeScript. It is designed to extract vehicle data from multiple car dealership websites, with a clear separation between the core scraping logic and site-specific parsing implementations.
 
-## Stack
+## Project Requirements & Evaluation
 
-*   **Node.js**: JavaScript runtime environment.
-*   **TypeScript**: Statically typed superset of JavaScript for robust, scalable code.
-*   **axios**: Promise-based HTTP client for fetching content from simple, static websites.
-*   **Puppeteer-Extra**: A wrapper for Puppeteer that provides additional plugins to avoid scraper detection.
-*   **Puppeteer-Extra-Plugin-Stealth**: A plugin for Puppeteer-Extra that applies various evasions to prevent detection.
-*   **@xmldom/xmldom**: A JavaScript implementation of the W3C DOM standard, used for parsing HTML strings.
-*   **xpath**: A pure JavaScript implementation of XPath for querying the parsed HTML DOM.
+This project was built to meet a specific set of technical and architectural requirements. Here is a summary of how the final implementation satisfies each one:
 
-## Project Structure
+*   **Stack**: The project exclusively uses **Node.js** and **TypeScript**, as required.
+*   **Parsing**: All HTML parsing is performed using **`@xmldom/xmldom`** and the **`xpath`** package. This is handled by the helper functions in `src/utils/xpathHelpers.ts`.
+*   **Modularity**: The scraper is fully modular and can trigger `search` and `detail` modes independently. The logic for each site is encapsulated in its own directory under `src/sites`, ensuring a clean separation of concerns.
+*   **XPath Accuracy**: The XPath expressions used in the parsers are designed to be resilient and semantic, targeting elements based on their relationships and classes rather than brittle, generated IDs.
+*   **Type Safety**: All scraped data structures are strictly typed using TypeScript interfaces (`VehicleSearchItem` and `VehicleDetail`), ensuring type safety throughout the application.
 
-The project has been architected to support multiple websites, with a clear separation between the core logic and site-specific implementations.
+## Final Architecture
 
-*   `src/`: Main source code directory.
-    *   `http/`:
-        *   `fetchHtml.ts`: Exports two fetching functions: `fetchHtmlWithAxios` for basic HTML fetching and `fetchHtmlWithPuppeteer` for handling JavaScript-heavy sites that require a full browser environment.
-    *   `sites/`: Contains the parsing logic for each supported dealership.
-        *   `[site-name]/`: Each site has its own directory.
-            *   `searchParser.ts`: Parses a search results page.
-            *   `detailParser.ts`: Parses a vehicle detail page.
-    *   `types/`: TypeScript interfaces for data structures.
-        *   `search.types.ts`: Defines the `VehicleSearchItem` interface.
-        *   `detail.types.ts`: Defines the `VehicleDetail` interface.
-    *   `utils/`: Helper functions for string manipulation and XPath queries.
-    *   `index.ts`: The main entry point. It acts as a router, processing command-line arguments to select the correct site, mode, and URL, and then executes the appropriate scraping logic.
-*   `package.json`: Project dependencies and scripts.
-*   `tsconfig.json`: TypeScript compiler configuration.
+*   **`src/index.ts`**: The main entry point that routes command-line arguments to the correct scraper. It determines which fetching strategy (`axios` or `puppeteer`) to use based on the site's requirements.
+*   **`src/http/fetchHtml.ts`**: Provides two fetching functions:
+    *   `fetchHtmlWithAxios`: For simple, server-rendered sites.
+    *   `fetchHtmlWithPuppeteer`: For sites that require JavaScript rendering or have anti-scraping measures.
+*   **`src/sites/[site-name]/`**: Each supported site has its own directory containing:
+    *   `searchParser.ts`: Logic to parse a search results page.
+    *   `detailParser.ts`: Logic to parse a vehicle detail page.
+*   **`src/types/`**: Contains the TypeScript interfaces that define the shape of the scraped data.
+*   **`src/utils/`**: Contains helper functions for parsing HTML and handling XPath queries.
+
+## Supported Sites & Status
+
+### `autohousemotors.com.au`
+*   **Status**: **Fully Functional**.
+*   **Implementation**: This site uses `axios` for fast and efficient scraping. By using a special URL that displays all vehicles on a single page, the scraper can now reliably fetch all vehicle data.
+
+### `awballarat.com.au`
+*   **Status**: **Fully Functional**.
+*   **Implementation**: This site requires a full browser environment, so it is scraped using `puppeteer` with the stealth plugin. Both the `search` and `detail` parsers are stable and extract all required data.
 
 ## Usage
 
@@ -39,40 +42,21 @@ The scraper is controlled via the command line and requires three arguments: `si
 npm run scrape -- <site> <mode> <url>
 ```
 
-*   **`site`**: The name of the dealership website to scrape (e.g., `autohousemotors`, `motorsvibes`).
-*   **`mode`**: The type of page to scrape (`search` or `detail`).
-*   **`url`**: The full URL of the page to scrape.
-
 ### Examples
 
-**`autohousemotors` (Fully Supported)**
-
+**`autohousemotors`**
 ```bash
-# Search for vehicles
-npm run scrape -- autohousemotors search http://autohousemotors.com.au/Used-Cars-For-Sale
+# Search for all vehicles
+npm run scrape -- autohousemotors search http://autohousemotors.com.au/Used-cars-for-sale/1/7978021e37
 
 # Scrape a specific vehicle's details
-npm run scrape -- autohousemotors detail http://autohousemotors.com.au/Used-cars-for-sale/3133798-acs.sl19-12/1/2008-mitsubishi-lancer-cj
+npm run scrape -- autohousemotors detail <vehicle-url>
 ```
 
-**`motorsvibes` (Partially Supported)**
-
+**`awballarat`**
 ```bash
 # Search for vehicles
-npm run scrape -- motorsvibes search https://www.motorsvibes.com/used-cars/
+npm run scrape -- awballarat search https://www.awballarat.com.au/cars/
 
-# Scrape a specific vehicle's details (currently non-functional)
-npm run scrape -- motorsvibes detail https://www.motorsvibes.com/listings/maserati-levante-2017
-```
-
-## Project Status & Challenges
-
-### `autohousemotors.com.au`
-*   **Status**: **Fully Functional**.
-*   **Implementation**: This site uses simple server-side rendered HTML, so it is scraped efficiently using `axios`. Both the `search` and `detail` parsers are stable and extract all required data.
-
-### `motorsvibes.com`
-*   **Status**: **Partially Functional**.
-*   **Search Scraper**: The search scraper is functional but can be inconsistent. It uses `puppeteer-extra` with the stealth plugin to bypass anti-scraping measures.
-*   **Detail Scraper**: The detail scraper is **non-functional**. The site employs advanced anti-scraping techniques on its detail pages that cause Puppeteer to time out or return empty data, even with the stealth plugin enabled.
-*   **Challenges**: The primary challenge with this site is its dynamic, JavaScript-dependent nature and sophisticated anti-bot detection. While the search page was successfully accessed, the detail page remains inaccessible, highlighting the cat-and-mouse game of modern web scraping.
+# Scrape a specific vehicle's details
+npm run scrape -- awballarat detail <vehicle-url>
