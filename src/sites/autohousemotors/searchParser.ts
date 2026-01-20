@@ -15,9 +15,13 @@ export function parseSearchPage(html: string): VehicleSearchItem[] {
     const onclick = selectText(listing, ".//div[contains(@class,'more-info')]/@onclick") ?? '';
     const relativeUrl = extractUrl(onclick);
     const priceText = selectText(listing, ".//div[contains(@class,'default-price')]//h4");
+    const rawDescription = selectText(listing, ".//div[contains(@class, 'description')]") ?? '';
+    const description = rawDescription.replace(/MORE DETAILS/g, '').replace(/\s\s+/g, ' ').trim();
+
 
     return {
       title,
+      description,
       url: relativeUrl
         ? new URL(relativeUrl, 'http://autohousemotors.com.au').href
         : '',

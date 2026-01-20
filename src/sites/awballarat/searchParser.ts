@@ -14,13 +14,15 @@ export function parseSearchPage(html: string): VehicleSearchItem[] {
         listing,
         ".//div[contains(@class, 'elementor-widget-text-editor')]"
       ) ?? '';
-
+      
     return {
       title,
+     
       url: url ? new URL(url, 'https://www.awballarat.com.au').href : '',
       price: priceText
         ? Number(priceText.replace(/[^\d.]/g, ''))
         : undefined
+        
     };
   });
 }
